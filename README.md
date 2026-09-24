@@ -294,6 +294,10 @@ npm run test:postman        # = npx newman run postman/Webforge-P12.postman_coll
 
 Run `npm run seed` again before re-running, because the collection changes data. Running it twice within 15 minutes may hit the login rate limit. Raise `AUTH_RATE_LIMIT_MAX` in `.env` while testing if needed.
 
+### Live demo collection
+
+`postman/Webforge-Demo.postman_collection.json` holds the 40-request presentation flow. Send the requests one at a time from top to bottom right after `npm run seed`. IDs are captured automatically, and each request's description has its talking point.
+
 ### Smoke tests (against your real database)
 
 With `npm run dev` running:

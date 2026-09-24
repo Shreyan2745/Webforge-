@@ -1,0 +1,1558 @@
+{
+  "info": {
+    "name": "Webforge – LIVE DEMO (run manually, top to bottom)",
+    "description": "1) npm run seed (max 60 min before the demo)  2) npm run dev  3) Send each request in order. IDs are captured automatically. Each request's description has the talking point.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api/v1"
+    },
+    {
+      "key": "demoEmail",
+      "value": ""
+    },
+    {
+      "key": "demoWsId",
+      "value": ""
+    },
+    {
+      "key": "startAt",
+      "value": ""
+    },
+    {
+      "key": "endAt",
+      "value": ""
+    },
+    {
+      "key": "mongoWsId",
+      "value": ""
+    },
+    {
+      "key": "meeraMongoReg",
+      "value": ""
+    },
+    {
+      "key": "cutoffRegId",
+      "value": ""
+    },
+    {
+      "key": "aaravMongoReg",
+      "value": ""
+    },
+    {
+      "key": "liveWsId",
+      "value": ""
+    },
+    {
+      "key": "aaravLive",
+      "value": ""
+    },
+    {
+      "key": "diyaLive",
+      "value": ""
+    },
+    {
+      "key": "nodeWsId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1 · Auth & security",
+      "item": [
+        {
+          "name": "01 · Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops?limit=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "**Say:** Server is up and connected to MongoDB Atlas."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 · Sign up and try to become ADMIN",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "**Say:** I sent role ADMIN in the body. Look: the account is a USER. Zod strips unknown fields, so nobody can promote themselves. The password hash never comes back, and the Headers tab shows an HttpOnly cookie.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Judge\",\n  \"email\": \"{{demoEmail}}\",\n  \"password\": \"secret123\",\n  \"role\": \"ADMIN\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('demoEmail', `judge_${Date.now()}@demo.dev`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 · Me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "**Say:** The cookie is sent automatically. We re-load the user on every request, so a deleted user loses access immediately."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 · Student tries to create a workshop → 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workshops",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops"
+              ]
+            },
+            "description": "**Say:** Authenticated but the wrong role, so 403 FORBIDDEN from the role middleware.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 · Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "**Say:** Clears the cookie."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 · Wrong password → 401 (generic)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "**Say:** Same message for a wrong password and an unknown email, and we still run bcrypt for unknown emails so the timing is the same. You cannot probe which emails exist. This attempt also lands in the audit log.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@webforge.dev\",\n  \"password\": \"wrong-pass-1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 · Public catalogue",
+      "item": [
+        {
+          "name": "07 · Search + sort + paginate",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops?search=node&sort=-startAt&page=1&limit=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "node"
+                },
+                {
+                  "key": "sort",
+                  "value": "-startAt"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": "**Say:** No login needed. Search, filters, sort and pagination, with a meta block. seatsLeft is computed. Staff assignments are hidden from the public."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08 · Try to see drafts → empty",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops?status=DRAFT",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "DRAFT"
+                }
+              ]
+            },
+            "description": "**Say:** Drafts are admin-only. The public simply gets nothing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 · Admin: workshop lifecycle",
+      "item": [
+        {
+          "name": "09 · Login as Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "**Say:** Logging in as Admin. The JWT goes into an HTTP-only cookie, so there's no token to copy around.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@webforge.dev\",\n  \"password\": \"Admin@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10 · Create workshop (tries to force PUBLISHED)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workshops",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops"
+              ]
+            },
+            "description": "**Say:** I tried to set status and seatsTaken. Both are ignored: every workshop starts as DRAFT with 0 seats taken.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Demo: Building REST APIs\",\n  \"description\": \"Created live during the demo\",\n  \"trainer\": \"Ravi Kumar\",\n  \"venue\": \"Auditorium\",\n  \"startAt\": \"{{startAt}}\",\n  \"endAt\": \"{{endAt}}\",\n  \"capacity\": 40,\n  \"status\": \"PUBLISHED\",\n  \"seatsTaken\": 99\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const s = new Date(Date.now() + 4*24*3600e3); s.setHours(10,0,0,0);",
+                  "pm.collectionVariables.set('startAt', s.toISOString());",
+                  "pm.collectionVariables.set('endAt', new Date(s.getTime() + 3*3600e3).toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data) pm.collectionVariables.set('demoWsId', json.data.workshop.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11 · Invalid workshop → 400 with field details",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workshops",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops"
+              ]
+            },
+            "description": "**Say:** Every problem is reported at once, field by field: title, description and trainer too short, and capacity below 1. Date rules (end after start, start in the future) are checked too.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"X\",\n  \"description\": \"short\",\n  \"trainer\": \"R\",\n  \"venue\": \"Lab 3\",\n  \"startAt\": \"{{startAt}}\",\n  \"endAt\": \"{{endAt}}\",\n  \"capacity\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12 · Publish",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{demoWsId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{demoWsId}}",
+                "status"
+              ]
+            },
+            "description": "**Say:** DRAFT to PUBLISHED is an allowed transition.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PUBLISHED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "13 · Publish again → 409 INVALID_TRANSITION",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{demoWsId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{demoWsId}}",
+                "status"
+              ]
+            },
+            "description": "**Say:** All status changes go through one state machine. The error even tells you which moves are allowed.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PUBLISHED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14 · Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "**Say:** Clears the cookie."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4 · Student: registration, waitlist, cutoff",
+      "item": [
+        {
+          "name": "15 · Find \"MongoDB Schema Design\" (full)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops?search=MongoDB",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "MongoDB"
+                }
+              ]
+            },
+            "description": "**Say:** This workshop is full: 3 of 3 seats, seatsLeft 0."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('mongoWsId', json.data.workshops[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16 · Login as student Meera",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "**Say:** Logging in as student Meera. The JWT goes into an HTTP-only cookie, so there's no token to copy around.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"meera@student.dev\",\n  \"password\": \"User@1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17 · Register for a full workshop → WAITLISTED",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{mongoWsId}}/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{mongoWsId}}",
+                "register"
+              ]
+            },
+            "description": "**Say:** Full, so Meera is waitlisted with her position. The position is never stored. It comes from a queue ticket each registration takes atomically."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data) pm.collectionVariables.set('meeraMongoReg', json.data.registration.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18 · Register again → 409 ALREADY_REGISTERED",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{mongoWsId}}/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{mongoWsId}}",
+                "register"
+              ]
+            },
+            "description": "**Say:** Duplicates are blocked by a check and, underneath, by a partial unique index in MongoDB."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "19 · Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "**Say:** Clears the cookie."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "20 · Login as student Aarav",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "**Say:** Logging in as student Aarav. The JWT goes into an HTTP-only cookie, so there's no token to copy around.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"aarav@student.dev\",\n  \"password\": \"User@1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "21 · My registrations (grouped)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/registrations/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "registrations",
+                "me"
+              ]
+            },
+            "description": "**Say:** Grouped into upcoming, waitlisted, past and cancelled. Each entry has canCancel. The AI Prompt Engineering workshop starts in 90 minutes, so canCancel is false."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const up = json.data.groups.upcoming;",
+                  "const soon = up.find(r => r.workshop.title === 'AI Prompt Engineering'); if (soon) pm.collectionVariables.set('cutoffRegId', soon.id);",
+                  "const mongo = up.find(r => r.workshop.title === 'MongoDB Schema Design'); if (mongo) pm.collectionVariables.set('aaravMongoReg', mongo.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "22 · Cancel inside the 2-hour cutoff → 422",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/registrations/{{cutoffRegId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "registrations",
+                "{{cutoffRegId}}",
+                "cancel"
+              ]
+            },
+            "description": "**Say:** The request is valid but breaks a business rule, so 422, and the message says the exact cutoff time.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "23 · Read Meera's registration → 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/registrations/{{meeraMongoReg}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "registrations",
+                "{{meeraMongoReg}}"
+              ]
+            },
+            "description": "**Say:** Not 403, 404. We never confirm that someone else's registration exists. This is the OWASP BOLA / IDOR defence."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "24 · Cancel MongoDB seat → waitlist #1 promoted",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/registrations/{{aaravMongoReg}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "registrations",
+                "{{aaravMongoReg}}",
+                "cancel"
+              ]
+            },
+            "description": "**Say:** The seat frees up and in the same transaction the first person in the queue, Ananya, is confirmed automatically. No admin needed.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Exam clash\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "25 · Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "**Say:** Clears the cookie."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5 · Spot registrar: event day (headline feature)",
+      "item": [
+        {
+          "name": "26 · Login as spot registrar Rahul",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "**Say:** Now the event-day desk. Rahul is a SPOT_REGISTRAR, a third role we added for the people at the venue.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"spot1@webforge.dev\",\n  \"password\": \"Spot@1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "27 · My workshops today",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spot/workshops",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spot",
+                "workshops"
+              ]
+            },
+            "description": "**Say:** Only workshops assigned to him. The Git workshop started 20 minutes ago: windowOpen is true, and canMarkNoShow is true because the 15-minute grace period has passed."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const live = json.data.workshops.find(w => w.title.includes('(LIVE)')); if (live) pm.collectionVariables.set('liveWsId', live.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28 · Roster",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spot/workshops/{{liveWsId}}/roster",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spot",
+                "workshops",
+                "{{liveWsId}}",
+                "roster"
+              ]
+            },
+            "description": "**Say:** Four lists plus nextInLine. Look: Vihaan is waitlist #1 but he is not here. Meera is #2 and present. Once the check-in window is open, only present people can get a seat, so nextInLine is Meera."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "{ const r = (json.data.confirmed).find(x => x.name === 'Aarav Sharma'); if (r) pm.collectionVariables.set('aaravLive', r.registrationId); }",
+                  "{ const r = (json.data.confirmed).find(x => x.name === 'Diya Patel'); if (r) pm.collectionVariables.set('diyaLive', r.registrationId); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "29 · Check in Aarav",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spot/registrations/{{aaravLive}}/check-in",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spot",
+                "registrations",
+                "{{aaravLive}}",
+                "check-in"
+              ]
+            },
+            "description": "**Say:** CONFIRMED to ATTENDED. Attendance is what certificates would be based on."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "30 · Diya did not come → no-show",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spot/registrations/{{diyaLive}}/no-show",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spot",
+                "registrations",
+                "{{diyaLive}}",
+                "no-show"
+              ]
+            },
+            "description": "**Say:** THE moment: one call marks Diya as a no-show and gives her seat to Meera, who is standing at the desk. Read the message. It skipped absent Vihaan but kept queue order among present people."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "31 · Roster again",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spot/workshops/{{liveWsId}}/roster",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spot",
+                "workshops",
+                "{{liveWsId}}",
+                "roster"
+              ]
+            },
+            "description": "**Say:** Seats are still full, Meera is confirmed, and the counts updated. No seat is wasted."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "32 · Unassigned workshop → 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spot/workshops/{{mongoWsId}}/roster",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spot",
+                "workshops",
+                "{{mongoWsId}}",
+                "roster"
+              ]
+            },
+            "description": "**Say:** Rahul is not assigned to the MongoDB workshop, so for him it does not exist."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "33 · Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "**Say:** Clears the cookie."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6 · Admin: cascade + audit trail",
+      "item": [
+        {
+          "name": "34 · Login as Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "**Say:** Logging in as Admin. The JWT goes into an HTTP-only cookie, so there's no token to copy around.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@webforge.dev\",\n  \"password\": \"Admin@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "35 · Participants of MongoDB workshop",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{mongoWsId}}/participants",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{mongoWsId}}",
+                "participants"
+              ]
+            },
+            "description": "**Say:** Counts by status, waitlist positions, and search and filter. Ananya is now CONFIRMED and Meera moved up the queue."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "36 · Find \"Node.js & Express REST APIs\"",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops?search=Express%20REST",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "Express%20REST"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('nodeWsId', json.data.workshops[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "37 · Cancel the workshop → cascade",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{nodeWsId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{nodeWsId}}",
+                "status"
+              ]
+            },
+            "description": "**Say:** One transaction: the workshop is cancelled, every confirmed and waitlisted registration is cancelled with a history entry, and seatsTaken resets to 0.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CANCELLED\",\n  \"reason\": \"Trainer unavailable\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "38 · Audit trail of that workshop",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/audit-logs?resourceId={{nodeWsId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "audit-logs"
+              ],
+              "query": [
+                {
+                  "key": "resourceId",
+                  "value": "{{nodeWsId}}"
+                }
+              ]
+            },
+            "description": "**Say:** Who did what, when, to what, with IP and user agent. Written by an event listener after the commit, so logging can never break a request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "39 · Everything the SYSTEM did",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/audit-logs?actor=SYSTEM&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "audit-logs"
+              ],
+              "query": [
+                {
+                  "key": "actor",
+                  "value": "SYSTEM"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "**Say:** Automatic promotions are logged too, including the two we just triggered. The actor is System."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40 · Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "**Say:** Clears the cookie."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
