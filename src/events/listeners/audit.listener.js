@@ -1,4 +1,12 @@
-// Subscribes to every domain event and writes an AuditLog entry (best-effort: log failures, never throw).
-// TODO(build: audit): loop over constants/events and bus.on(event, payload => auditService.record(payload))
+const { bus } = require('../bus');
+const EVENTS = require('../../constants/events');
+const auditService = require('../../services/audit.service');
 
-module.exports = function registerAuditListener() {};
+// Every domain event becomes one audit log entry.
+module.exports = function registerAuditListener() {
+  for (const event of Object.values(EVENTS)) {
+    bus.on(event, (payload) => {
+      auditService.record(payload); // best-effort, never throws
+    });
+  }
+};

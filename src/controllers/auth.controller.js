@@ -2,6 +2,8 @@ const authService = require('../services/auth.service');
 const { sendSuccess } = require('../utils/apiResponse');
 const { setAuthCookie, clearAuthCookie } = require('../utils/cookie');
 const { requestInfo } = require('../utils/requestContext');
+const { emit } = require('../events/bus');
+const EVENTS = require('../constants/events');
 
 async function register(req, res) {
   const { user, token, expiresAt } = await authService.registerUser(req.body, requestInfo(req));
@@ -17,6 +19,7 @@ async function login(req, res) {
 
 async function logout(req, res) {
   clearAuthCookie(res);
+  emit(EVENTS.USER_LOGGED_OUT, { actor: { id: req.user.id, role: req.user.role }, resourceType: 'User', resourceId: req.user.id, data: {}, req: requestInfo(req) });
   sendSuccess(res, { message: 'Logged out' });
 }
 

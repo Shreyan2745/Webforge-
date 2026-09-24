@@ -31,7 +31,16 @@ async function registerUser({ name, email, password }, ctx) {
 async function loginUser({ email, password }, ctx) {
   const user = await User.findOne({ email }).select('+password');
   const ok = user ? await user.comparePassword(password) : await bcrypt.compare(password, DUMMY_HASH).then(() => false);
-  if (!ok) throw ApiError.unauthorized('Invalid email or password', CODES.INVALID_CREDENTIALS);
+  if (!ok) {
+    emit(EVENTS.USER_LOGIN_FAILED, {
+      actor: null,
+      resourceType: 'User',
+      resourceId: user?._id || null,
+      data: { email, reason: user ? 'WRONG_PASSWORD' : 'UNKNOWN_EMAIL' },
+      req: ctx,
+    });
+    throw ApiError.unauthorized('Invalid email or password', CODES.INVALID_CREDENTIALS);
+  }
 
   const session = signToken(user);
 

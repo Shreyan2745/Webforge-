@@ -1,9 +1,9 @@
-// Audit log listing (admin)
-// Controllers stay thin: read req -> call service -> sendSuccess(). Business rules live in services.
-const notImplemented = require('../utils/notImplemented');
-// const asyncHandler = require('../utils/asyncHandler');
-// const { sendSuccess } = require('../utils/apiResponse');
+const auditService = require('../services/audit.service');
+const { sendSuccess } = require('../utils/apiResponse');
 
-module.exports = {
-  list: notImplemented('audit.controller.list'),
-};
+async function list(req, res) {
+  const { items, meta } = await auditService.listLogs(req.query);
+  sendSuccess(res, { message: 'Audit logs', data: { logs: items }, meta });
+}
+
+module.exports = { list };
