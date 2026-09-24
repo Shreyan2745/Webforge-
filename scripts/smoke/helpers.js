@@ -6,8 +6,8 @@ const { User } = require('../../src/models');
 const BASE = process.env.SMOKE_BASE_URL || 'http://localhost:5000/api/v1';
 
 // A tiny HTTP client with its own cookie jar (one per logged-in role)
-function client() {
-  let cookie = '';
+function client(initialCookie = '') {
+  let cookie = initialCookie;
   return async function call(method, path, body) {
     const res = await fetch(BASE + path, {
       method,
@@ -52,4 +52,11 @@ async function loginAs(email) {
   return call;
 }
 
-module.exports = { BASE, client, reporter, ensureUser, loginAs, connectDB };
+// Signed-in client without going through /auth/login (avoids the login rate limit in bulk tests)
+function sessionFor(user) {
+  const config = require('../../src/config/env');
+  const { signToken } = require('../../src/utils/jwt');
+  return client(`${config.cookieName}=${signToken(user).token}`);
+}
+
+module.exports = { BASE, client, reporter, ensureUser, loginAs, sessionFor, connectDB };

@@ -146,7 +146,7 @@ async function updateWorkshop(id, data, ctx) {
     // R9: more capacity -> pull people off the waitlist
     let promoted = [];
     if (changes.capacity && changes.capacity.to > changes.capacity.from && ws.status === W.PUBLISHED) {
-      promoted = await promotionService.fillOpenSeats(ws, { session, actor: ctx.actor });
+      promoted = await promotionService.fillOpenSeats(ws._id, { session });
     }
     return { ws, changes, promoted };
   });
