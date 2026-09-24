@@ -1,15 +1,46 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+const config = require('../config/env');
+const { ROLES } = require('../constants/enums');
 
-/*
- * User
- * - name, email (unique, lowercase, trimmed)
- * - password (bcrypt hash, select: false) - hashed in a pre('save') hook
- * - role: USER | SPOT_REGISTRAR | ADMIN (default USER)
- * - methods: comparePassword(plain)
- * - toJSON: strip password and __v
- */
+const userSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true, trim: true, minlength: 2, maxlength: 60 },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      match: [/^\S+@\S+\.\S+$/, 'Invalid email'],
+    },
+    password: { type: String, required: true, minlength: 8, select: false },
+    role: { type: String, enum: Object.values(ROLES), default: ROLES.USER },
+  },
+  {
+    timestamps: true,
+    toJSON: {
+      virtuals: true,
+      transform(doc, ret) {
+        delete ret._id;
+        delete ret.password;
+        delete ret.__v;
+        return ret;
+      },
+    },
+  }
+);
 
-// TODO(build): define fields, indexes and hooks from the spec above.
-const userSchema = new mongoose.Schema({}, { timestamps: true });
+userSchema.index({ role: 1 });
+
+// Hash the password whenever it is set or changed
+userSchema.pre('save', async function hashPassword() {
+  if (!this.isModified('password')) return;
+  this.password = await bcrypt.hash(this.password, config.bcryptSaltRounds);
+});
+
+userSchema.methods.comparePassword = function comparePassword(plain) {
+  return bcrypt.compare(plain, this.password);
+};
 
 module.exports = mongoose.model('User', userSchema);

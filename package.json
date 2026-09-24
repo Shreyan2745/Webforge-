@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "seed": "node scripts/seed.js"
+    "seed": "node scripts/seed.js",
+    "smoke:auth": "node scripts/smoke/auth.smoke.js"
   },
   "engines": {
     "node": ">=18"

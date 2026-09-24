@@ -38,5 +38,10 @@ module.exports = {
     from: process.env.MAIL_FROM || 'Webforge Workshops <no-reply@webforge.dev>',
   },
 
+  rateLimit: {
+    authMax: int(process.env.AUTH_RATE_LIMIT_MAX, 20), // login/register attempts per 15 min per IP
+    globalMax: int(process.env.GLOBAL_RATE_LIMIT_MAX, 300),
+  },
+
   enableCron: process.env.ENABLE_CRON !== 'false',
 };
