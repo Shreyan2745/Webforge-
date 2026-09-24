@@ -7,4 +7,9 @@ function requestInfo(req) {
   return { ip: req.ip, userAgent: req.get('user-agent') || null };
 }
 
-module.exports = { actorFrom, requestInfo };
+// What services receive: who is acting + request metadata for audit logs
+function contextFrom(req) {
+  return { actor: actorFrom(req), req: requestInfo(req) };
+}
+
+module.exports = { actorFrom, requestInfo, contextFrom };
