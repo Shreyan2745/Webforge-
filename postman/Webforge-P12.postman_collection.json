@@ -1,0 +1,3474 @@
+{
+  "info": {
+    "name": "Webforge – Workshop Management API (P12)",
+    "description": "Run `npm run seed` first, then run the whole collection in order with the Collection Runner.\n\nAuth uses an HTTP-only cookie: Postman stores it automatically after each login, and each folder logs in as the role it needs.\n\nSeeded accounts: admin@webforge.dev / Admin@123 · spot1@webforge.dev / Spot@1234 · aarav@student.dev, diya@student.dev ... / User@1234",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "host",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "baseUrl",
+      "value": "{{host}}/api/v1"
+    },
+    {
+      "key": "runEmail",
+      "value": ""
+    },
+    {
+      "key": "workshopId",
+      "value": ""
+    },
+    {
+      "key": "regId1",
+      "value": ""
+    },
+    {
+      "key": "regId2",
+      "value": ""
+    },
+    {
+      "key": "spotId",
+      "value": ""
+    },
+    {
+      "key": "liveWsId",
+      "value": ""
+    },
+    {
+      "key": "mongoWsId",
+      "value": ""
+    },
+    {
+      "key": "cutoffRegId",
+      "value": ""
+    },
+    {
+      "key": "cancelledWsId",
+      "value": ""
+    },
+    {
+      "key": "confirmedA",
+      "value": ""
+    },
+    {
+      "key": "confirmedB",
+      "value": ""
+    },
+    {
+      "key": "absentWaitReg",
+      "value": ""
+    },
+    {
+      "key": "nextInLineId",
+      "value": ""
+    },
+    {
+      "key": "startAt",
+      "value": ""
+    },
+    {
+      "key": "endAt",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "00 Health",
+      "description": "Server is up.",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{host}}/health",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown route -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/does-not-exist",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "does-not-exist"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = ROUTE_NOT_FOUND', () => pm.expect(json.error.code).to.eql('ROUTE_NOT_FOUND'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 Auth",
+      "description": "Register, login, logout, me - with failure cases.",
+      "item": [
+        {
+          "name": "Register new student (role in body is ignored)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Student\",\n  \"email\": \"{{runEmail}}\",\n  \"password\": \"secret123\",\n  \"role\": \"ADMIN\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('runEmail', `student_${Date.now()}@test.dev`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('role forced to USER', () => pm.expect(json.data.user.role).to.eql('USER'));",
+                  "pm.test('password never returned', () => pm.expect(json.data.user).to.not.have.property('password'));",
+                  "pm.test('HTTP-only cookie set', () => pm.expect(pm.response.headers.get('Set-Cookie')).to.include('HttpOnly'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me (cookie) -> 200",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('same user', () => pm.expect(json.data.user.email).to.eql(pm.collectionVariables.get('runEmail')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register duplicate email -> 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Student\",\n  \"email\": \"{{runEmail}}\",\n  \"password\": \"secret123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = EMAIL_TAKEN', () => pm.expect(json.error.code).to.eql('EMAIL_TAKEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register invalid body -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"A\",\n  \"email\": \"not-an-email\",\n  \"password\": \"short\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = VALIDATION_ERROR', () => pm.expect(json.error.code).to.eql('VALIDATION_ERROR'));",
+                  "pm.test('field-level details', () => pm.expect(json.error.details.length).to.be.at.least(3));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me without cookie -> 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = UNAUTHENTICATED', () => pm.expect(json.error.code).to.eql('UNAUTHENTICATED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login wrong password -> 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@webforge.dev\",\n  \"password\": \"wrong-pass-1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = INVALID_CREDENTIALS', () => pm.expect(json.error.code).to.eql('INVALID_CREDENTIALS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login unknown email -> 401 (same message)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nobody@webforge.dev\",\n  \"password\": \"whatever1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = INVALID_CREDENTIALS', () => pm.expect(json.error.code).to.eql('INVALID_CREDENTIALS'));",
+                  "pm.test('generic message', () => pm.expect(json.error.message).to.eql('Invalid email or password'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Public catalogue (no login) -> 200",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops?limit=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('only PUBLISHED by default', () => json.data.workshops.forEach(w => pm.expect(w.status).to.eql('PUBLISHED')));",
+                  "pm.test('pagination meta', () => pm.expect(json.meta).to.have.all.keys('page','limit','total','totalPages'));",
+                  "pm.test('staff fields hidden', () => json.data.workshops.forEach(w => pm.expect(w).to.not.have.property('spotRegistrars')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Public cannot filter DRAFT -> empty",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops?status=DRAFT",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "DRAFT"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('no drafts leak', () => pm.expect(json.data.workshops.length).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin route without login -> 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workshops",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 Admin – Workshops",
+      "description": "Create, validate, publish, update, catalogue, staff.",
+      "item": [
+        {
+          "name": "Login as ADMIN",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@webforge.dev\",\n  \"password\": \"Admin@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('role', () => pm.expect(json.data.user.role).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create workshop -> 201 DRAFT",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workshops",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Postman Test Workshop\",\n  \"description\": \"Created by the Postman collection run\",\n  \"trainer\": \"Ravi Kumar\",\n  \"venue\": \"Lab 3\",\n  \"startAt\": \"{{startAt}}\",\n  \"endAt\": \"{{endAt}}\",\n  \"capacity\": 1,\n  \"status\": \"PUBLISHED\",\n  \"seatsTaken\": 99\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const s = new Date(Date.now() + 3*24*3600e3); s.setMinutes(0,0,0);",
+                  "pm.collectionVariables.set('startAt', s.toISOString());",
+                  "pm.collectionVariables.set('endAt', new Date(s.getTime() + 3*3600e3).toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('always DRAFT, seatsTaken 0', () => { pm.expect(json.data.workshop.status).to.eql('DRAFT'); pm.expect(json.data.workshop.seatsTaken).to.eql(0); });",
+                  "pm.collectionVariables.set('workshopId', json.data.workshop.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create: endAt before startAt -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workshops",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Bad dates\",\n  \"description\": \"endAt is before startAt\",\n  \"trainer\": \"Ravi\",\n  \"venue\": \"Lab 3\",\n  \"startAt\": \"{{endAt}}\",\n  \"endAt\": \"{{startAt}}\",\n  \"capacity\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = VALIDATION_ERROR', () => pm.expect(json.error.code).to.eql('VALIDATION_ERROR'));",
+                  "pm.test('points at endAt', () => pm.expect(json.error.details.map(d => d.field)).to.include('endAt'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create: start in the past -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workshops",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Past workshop\",\n  \"description\": \"Starts in the past\",\n  \"trainer\": \"Ravi\",\n  \"venue\": \"Lab 3\",\n  \"startAt\": \"2020-01-01T10:00:00Z\",\n  \"endAt\": \"2020-01-01T12:00:00Z\",\n  \"capacity\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = VALIDATION_ERROR', () => pm.expect(json.error.code).to.eql('VALIDATION_ERROR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create: capacity not an integer -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workshops",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Bad capacity\",\n  \"description\": \"Capacity is a decimal\",\n  \"trainer\": \"Ravi\",\n  \"venue\": \"Lab 3\",\n  \"startAt\": \"{{startAt}}\",\n  \"endAt\": \"{{endAt}}\",\n  \"capacity\": 2.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = VALIDATION_ERROR', () => pm.expect(json.error.code).to.eql('VALIDATION_ERROR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get DRAFT as admin -> 200",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{workshopId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{workshopId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Publish -> 200",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{workshopId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{workshopId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PUBLISHED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('PUBLISHED', () => pm.expect(json.data.workshop.status).to.eql('PUBLISHED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Publish again -> 409 INVALID_TRANSITION",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{workshopId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{workshopId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PUBLISHED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = INVALID_TRANSITION', () => pm.expect(json.error.code).to.eql('INVALID_TRANSITION'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Status DRAFT is not allowed -> 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{workshopId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{workshopId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"DRAFT\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = VALIDATION_ERROR', () => pm.expect(json.error.code).to.eql('VALIDATION_ERROR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Complete before it ends -> 422",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{workshopId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{workshopId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"COMPLETED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = WORKSHOP_NOT_ENDED', () => pm.expect(json.error.code).to.eql('WORKSHOP_NOT_ENDED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update venue -> 200 (reports changes)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{workshopId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{workshopId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"venue\": \"Seminar Hall\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('venue changed', () => pm.expect(json.data.changes).to.have.property('venue'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update with empty body -> 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{workshopId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{workshopId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = VALIDATION_ERROR', () => pm.expect(json.error.code).to.eql('VALIDATION_ERROR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Catalogue: search + filter + sort",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops?search=node&status=PUBLISHED&sort=-startAt&page=1&limit=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "node"
+                },
+                {
+                  "key": "status",
+                  "value": "PUBLISHED"
+                },
+                {
+                  "key": "sort",
+                  "value": "-startAt"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('every result matches the search', () => json.data.workshops.forEach(w => pm.expect((w.title + w.description + w.trainer).toLowerCase()).to.include('node')));",
+                  "pm.test('seatsLeft present', () => json.data.workshops.forEach(w => pm.expect(w).to.have.property('seatsLeft')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Catalogue: filter by trainer + upcoming",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops?trainer=ravi&upcoming=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops"
+              ],
+              "query": [
+                {
+                  "key": "trainer",
+                  "value": "ravi"
+                },
+                {
+                  "key": "upcoming",
+                  "value": "true"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('trainer matches', () => json.data.workshops.forEach(w => pm.expect(w.trainer.toLowerCase()).to.include('ravi')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Catalogue: invalid sort -> 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops?sort=password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops"
+              ],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "password"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = VALIDATION_ERROR', () => pm.expect(json.error.code).to.eql('VALIDATION_ERROR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Catalogue: limit > 50 -> 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops?limit=500",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "500"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = VALIDATION_ERROR', () => pm.expect(json.error.code).to.eql('VALIDATION_ERROR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get workshop: malformed id -> 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/not-an-id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "not-an-id"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = INVALID_ID', () => pm.expect(json.error.code).to.eql('INVALID_ID'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get workshop: unknown id -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/65f000000000000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "65f000000000000000000000"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = NOT_FOUND', () => pm.expect(json.error.code).to.eql('NOT_FOUND'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List spot registrars",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users?role=SPOT_REGISTRAR&search=spot1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "SPOT_REGISTRAR"
+                },
+                {
+                  "key": "search",
+                  "value": "spot1"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('found spot1', () => pm.expect(json.data.users[0].email).to.eql('spot1@webforge.dev'));",
+                  "pm.collectionVariables.set('spotId', json.data.users[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Assign spot registrar -> 200",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{workshopId}}/spot-registrars",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{workshopId}}",
+                "spot-registrars"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userIds\": [\"{{spotId}}\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Assign a non-spot-registrar id -> 422",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{workshopId}}/spot-registrars",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{workshopId}}",
+                "spot-registrars"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userIds\": [\"65f000000000000000000000\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = INVALID_ASSIGNEE', () => pm.expect(json.error.code).to.eql('INVALID_ASSIGNEE'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create staff account (SPOT_REGISTRAR) -> 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Desk\",\n  \"email\": \"desk_{{$timestamp}}@webforge.dev\",\n  \"password\": \"Spot@1234\",\n  \"role\": \"SPOT_REGISTRAR\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('role SPOT_REGISTRAR', () => pm.expect(json.data.user.role).to.eql('SPOT_REGISTRAR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create staff with role USER -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nope\",\n  \"email\": \"nope@webforge.dev\",\n  \"password\": \"Spot@1234\",\n  \"role\": \"USER\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = VALIDATION_ERROR', () => pm.expect(json.error.code).to.eql('VALIDATION_ERROR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 Student – Registration",
+      "description": "Register, waitlist, duplicate, ownership, cancel + promotion, cutoff.",
+      "item": [
+        {
+          "name": "Login as student Aarav",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"aarav@student.dev\",\n  \"password\": \"User@1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('role', () => pm.expect(json.data.user.role).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Student creates workshop -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workshops",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = FORBIDDEN', () => pm.expect(json.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Student views participants -> 403",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{workshopId}}/participants",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{workshopId}}",
+                "participants"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = FORBIDDEN', () => pm.expect(json.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Student reads audit logs -> 403",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/audit-logs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "audit-logs"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = FORBIDDEN', () => pm.expect(json.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Student opens spot dashboard -> 403",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spot/workshops",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spot",
+                "workshops"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = FORBIDDEN', () => pm.expect(json.error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register -> 201 CONFIRMED (last seat)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{workshopId}}/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{workshopId}}",
+                "register"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('CONFIRMED', () => pm.expect(json.data.registration.status).to.eql('CONFIRMED'));",
+                  "pm.collectionVariables.set('regId1', json.data.registration.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register again -> 409 ALREADY_REGISTERED",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{workshopId}}/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{workshopId}}",
+                "register"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = ALREADY_REGISTERED', () => pm.expect(json.error.code).to.eql('ALREADY_REGISTERED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My registrations (grouped)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/registrations/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "registrations",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('groups present', () => pm.expect(json.data.groups).to.have.all.keys('upcoming','waitlisted','past','cancelled'));",
+                  "const soon = json.data.groups.upcoming.find(r => r.workshop.title === 'AI Prompt Engineering');",
+                  "pm.test('seeded cutoff registration found', () => pm.expect(soon).to.be.an('object'));",
+                  "pm.test('canCancel false inside 2h cutoff', () => pm.expect(soon.canCancel).to.eql(false));",
+                  "pm.collectionVariables.set('cutoffRegId', soon.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel inside 2h cutoff -> 422",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/registrations/{{cutoffRegId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "registrations",
+                "{{cutoffRegId}}",
+                "cancel"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = CANCELLATION_CUTOFF_PASSED', () => pm.expect(json.error.code).to.eql('CANCELLATION_CUTOFF_PASSED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Find a CANCELLED workshop",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops?status=CANCELLED",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "CANCELLED"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.collectionVariables.set('cancelledWsId', json.data.workshops[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register for CANCELLED workshop -> 409",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{cancelledWsId}}/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{cancelledWsId}}",
+                "register"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = REGISTRATION_CLOSED', () => pm.expect(json.error.code).to.eql('REGISTRATION_CLOSED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as student Diya",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"diya@student.dev\",\n  \"password\": \"User@1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('role', () => pm.expect(json.data.user.role).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register when full -> 201 WAITLISTED #1",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{workshopId}}/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{workshopId}}",
+                "register"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('WAITLISTED #1', () => { pm.expect(json.data.registration.status).to.eql('WAITLISTED'); pm.expect(json.data.registration.waitlistPosition).to.eql(1); });",
+                  "pm.collectionVariables.set('regId2', json.data.registration.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read someone else's registration -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/registrations/{{regId1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "registrations",
+                "{{regId1}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = NOT_FOUND', () => pm.expect(json.error.code).to.eql('NOT_FOUND'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel someone else's registration -> 404",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/registrations/{{regId1}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "registrations",
+                "{{regId1}}",
+                "cancel"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = NOT_FOUND', () => pm.expect(json.error.code).to.eql('NOT_FOUND'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as student Aarav",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"aarav@student.dev\",\n  \"password\": \"User@1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('role', () => pm.expect(json.data.user.role).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel own seat -> 200, waitlist promoted",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/registrations/{{regId1}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "registrations",
+                "{{regId1}}",
+                "cancel"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Exam clash\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Diya promoted', () => pm.expect(json.data.promoted[0].registrationId).to.eql(pm.collectionVariables.get('regId2')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel again -> 409 INVALID_TRANSITION",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/registrations/{{regId1}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "registrations",
+                "{{regId1}}",
+                "cancel"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = INVALID_TRANSITION', () => pm.expect(json.error.code).to.eql('INVALID_TRANSITION'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Re-register after cancelling -> 201 WAITLISTED",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{workshopId}}/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{workshopId}}",
+                "register"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('back of the queue', () => pm.expect(json.data.registration.status).to.eql('WAITLISTED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 Spot Registrar – Event Day",
+      "description": "Roster, check-in, present, no-show swap (seed: \"Git & GitHub Workflow (LIVE)\").",
+      "item": [
+        {
+          "name": "Login as spot registrar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"spot1@webforge.dev\",\n  \"password\": \"Spot@1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('role', () => pm.expect(json.data.user.role).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My assigned workshops",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spot/workshops",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spot",
+                "workshops"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "const live = json.data.workshops.find(w => w.title.includes('(LIVE)'));",
+                  "pm.test('LIVE workshop assigned + window open', () => { pm.expect(live).to.be.an('object'); pm.expect(live.windowOpen).to.eql(true); pm.expect(live.canMarkNoShow).to.eql(true); });",
+                  "pm.collectionVariables.set('liveWsId', live.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Roster",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spot/workshops/{{liveWsId}}/roster",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spot",
+                "workshops",
+                "{{liveWsId}}",
+                "roster"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('counts', () => pm.expect(json.data.counts).to.include.keys('confirmed','attended','noShow','waitlisted','present'));",
+                  "pm.test('next in line is the PRESENT person, not #1', () => { pm.expect(json.data.nextInLine.present).to.eql(true); pm.expect(json.data.nextInLine.position).to.be.above(1); });",
+                  "pm.collectionVariables.set('confirmedA', json.data.confirmed[0].registrationId);",
+                  "pm.collectionVariables.set('confirmedB', json.data.confirmed[1].registrationId);",
+                  "pm.collectionVariables.set('nextInLineId', json.data.nextInLine.registrationId);",
+                  "pm.collectionVariables.set('absentWaitReg', json.data.waitlisted.find(w => !w.present).registrationId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Check in -> ATTENDED",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spot/registrations/{{confirmedA}}/check-in",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spot",
+                "registrations",
+                "{{confirmedA}}",
+                "check-in"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('ATTENDED', () => pm.expect(json.data.status).to.eql('ATTENDED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Check in twice -> 409",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spot/registrations/{{confirmedA}}/check-in",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spot",
+                "registrations",
+                "{{confirmedA}}",
+                "check-in"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = INVALID_TRANSITION', () => pm.expect(json.error.code).to.eql('INVALID_TRANSITION'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "No-show -> seat goes to the present waitlisted person",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spot/registrations/{{confirmedB}}/no-show",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spot",
+                "registrations",
+                "{{confirmedB}}",
+                "no-show"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('promoted = next in line', () => pm.expect(json.data.promoted[0].registrationId).to.eql(pm.collectionVariables.get('nextInLineId')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "No-show twice -> 409",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spot/registrations/{{confirmedB}}/no-show",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spot",
+                "registrations",
+                "{{confirmedB}}",
+                "no-show"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = INVALID_TRANSITION', () => pm.expect(json.error.code).to.eql('INVALID_TRANSITION'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mark absent #1 present (seats full, no swap)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spot/registrations/{{absentWaitReg}}/present",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spot",
+                "registrations",
+                "{{absentWaitReg}}",
+                "present"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('no promotion - seats full', () => pm.expect(json.data.promoted.length).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mark a CONFIRMED person present -> 409",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spot/registrations/{{nextInLineId}}/present",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spot",
+                "registrations",
+                "{{nextInLineId}}",
+                "present"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = INVALID_TRANSITION', () => pm.expect(json.error.code).to.eql('INVALID_TRANSITION'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Find an unassigned workshop",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops?search=MongoDB",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "MongoDB"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.collectionVariables.set('mongoWsId', json.data.workshops[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Roster of unassigned workshop -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spot/workshops/{{mongoWsId}}/roster",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spot",
+                "workshops",
+                "{{mongoWsId}}",
+                "roster"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = NOT_FOUND', () => pm.expect(json.error.code).to.eql('NOT_FOUND'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 Admin – Lifecycle & Audit",
+      "description": "Participants, capacity rules, cascade cancel, attendance rules, audit trail.",
+      "item": [
+        {
+          "name": "Login as ADMIN",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@webforge.dev\",\n  \"password\": \"Admin@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('role', () => pm.expect(json.data.user.role).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Participants with counts + waitlist positions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{mongoWsId}}/participants",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{mongoWsId}}",
+                "participants"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('3 confirmed, 3 waitlisted', () => { pm.expect(json.data.counts.CONFIRMED).to.eql(3); pm.expect(json.data.counts.WAITLISTED).to.eql(3); });",
+                  "pm.test('waitlist positions', () => pm.expect(json.data.participants.filter(p => p.waitlistPosition).map(p => p.waitlistPosition)).to.eql([1,2,3]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Participants: filter WAITLISTED",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{mongoWsId}}/participants?status=WAITLISTED",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{mongoWsId}}",
+                "participants"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "WAITLISTED"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('only waitlisted', () => json.data.participants.forEach(p => pm.expect(p.status).to.eql('WAITLISTED')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Capacity below booked seats -> 409",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{mongoWsId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{mongoWsId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"capacity\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = CAPACITY_BELOW_BOOKED', () => pm.expect(json.error.code).to.eql('CAPACITY_BELOW_BOOKED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Increase capacity -> waitlist promoted",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{mongoWsId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{mongoWsId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"capacity\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('1 promoted', () => pm.expect(json.data.promotedCount).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mark ATTENDED 2 days early -> 422",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/registrations/{{regId2}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "registrations",
+                "{{regId2}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ATTENDED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = CHECKIN_WINDOW_CLOSED', () => pm.expect(json.error.code).to.eql('CHECKIN_WINDOW_CLOSED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registration detail with history (admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/registrations/{{regId2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "registrations",
+                "{{regId2}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('history: WAITLISTED then CONFIRMED (promoted)', () => { const h = json.data.registration.statusHistory; pm.expect(h[0].status).to.eql('WAITLISTED'); pm.expect(h[h.length-1].reason).to.eql('PROMOTED_FROM_WAITLIST'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel workshop -> cascades to registrations",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{workshopId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{workshopId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CANCELLED\",\n  \"reason\": \"Trainer unavailable\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('registrations cancelled', () => pm.expect(json.data.affected.cancelled).to.be.at.least(2));",
+                  "pm.test('seatsTaken reset', () => pm.expect(json.data.workshop.seatsTaken).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Re-publish cancelled workshop -> 409",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{workshopId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{workshopId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PUBLISHED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = INVALID_TRANSITION', () => pm.expect(json.error.code).to.eql('INVALID_TRANSITION'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Edit cancelled workshop -> 409",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workshops/{{workshopId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workshops",
+                "{{workshopId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"venue\": \"Anywhere\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = WORKSHOP_NOT_EDITABLE', () => pm.expect(json.error.code).to.eql('WORKSHOP_NOT_EDITABLE'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Audit trail for the test workshop",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/audit-logs?resourceId={{workshopId}}&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "audit-logs"
+              ],
+              "query": [
+                {
+                  "key": "resourceId",
+                  "value": "{{workshopId}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "const actions = json.data.logs.map(l => l.action);",
+                  "pm.test('created, published, updated, cancelled', () => ['WORKSHOP_CREATED','WORKSHOP_PUBLISHED','WORKSHOP_UPDATED','WORKSHOP_CANCELLED'].forEach(a => pm.expect(actions).to.include(a)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Audit: SYSTEM promotions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/audit-logs?actor=SYSTEM&action=WAITLIST_PROMOTED&limit=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "audit-logs"
+              ],
+              "query": [
+                {
+                  "key": "actor",
+                  "value": "SYSTEM"
+                },
+                {
+                  "key": "action",
+                  "value": "WAITLIST_PROMOTED"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('actor is System', () => json.data.logs.forEach(l => pm.expect(l.actor.role).to.eql('SYSTEM')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Audit: failed logins",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/audit-logs?action=USER_LOGIN_FAILED&limit=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "audit-logs"
+              ],
+              "query": [
+                {
+                  "key": "action",
+                  "value": "USER_LOGIN_FAILED"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('has failed logins', () => pm.expect(json.data.logs.length).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Audit: invalid filter -> 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/audit-logs?action=HACK",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "audit-logs"
+              ],
+              "query": [
+                {
+                  "key": "action",
+                  "value": "HACK"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: false + error object', () => { pm.expect(json.success).to.eql(false); pm.expect(json.error).to.be.an('object'); });",
+                  "pm.test('error.code = VALIDATION_ERROR', () => pm.expect(json.error.code).to.eql('VALIDATION_ERROR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success: true', () => pm.expect(json.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

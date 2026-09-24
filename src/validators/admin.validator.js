@@ -1,9 +1,16 @@
-// Admin schemas. createStaff: name, email, password, role in [SPOT_REGISTRAR, ADMIN]
 const { z } = require('zod');
-// const { objectId, paginationQuery } = require('./common.validator');
-// const { ROLES, WORKSHOP_STATUS, REGISTRATION_STATUS } = require('../constants/enums');
+const { paginationQuery } = require('./common.validator');
+const { register } = require('./auth.validator');
+const { ROLES } = require('../constants/enums');
 
-const createStaff = z.object({}).passthrough(); // TODO
-const listUsersQuery = z.object({}).passthrough(); // TODO
+// Admins create staff accounts. Public signup can only ever create USERs.
+const createStaff = register.extend({
+  role: z.enum([ROLES.SPOT_REGISTRAR, ROLES.ADMIN], { error: 'role must be SPOT_REGISTRAR or ADMIN' }),
+});
+
+const listUsersQuery = paginationQuery.extend({
+  role: z.enum(Object.values(ROLES)).optional(),
+  search: z.string().trim().min(1).max(100).optional(),
+});
 
 module.exports = { createStaff, listUsersQuery };

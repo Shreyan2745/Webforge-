@@ -11,7 +11,8 @@
     "smoke:workshops": "node scripts/smoke/workshops.smoke.js",
     "smoke:registrations": "node scripts/smoke/registrations.smoke.js",
     "smoke:spot": "node scripts/smoke/spot.smoke.js",
-    "smoke:audit": "node scripts/smoke/audit.smoke.js"
+    "smoke:audit": "node scripts/smoke/audit.smoke.js",
+    "test:postman": "npx newman run postman/Webforge-P12.postman_collection.json"
   },
   "engines": {
     "node": ">=18"

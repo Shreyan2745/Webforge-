@@ -1,10 +1,15 @@
-// Admin user management (create SPOT_REGISTRAR / ADMIN accounts)
-// Controllers stay thin: read req -> call service -> sendSuccess(). Business rules live in services.
-const notImplemented = require('../utils/notImplemented');
-// const asyncHandler = require('../utils/asyncHandler');
-// const { sendSuccess } = require('../utils/apiResponse');
+const adminService = require('../services/admin.service');
+const { sendSuccess } = require('../utils/apiResponse');
+const { contextFrom } = require('../utils/requestContext');
 
-module.exports = {
-  createStaff: notImplemented('admin.controller.createStaff'),
-  listUsers: notImplemented('admin.controller.listUsers'),
-};
+async function createStaff(req, res) {
+  const user = await adminService.createStaff(req.body, contextFrom(req));
+  sendSuccess(res, { statusCode: 201, message: `${user.role} account created`, data: { user } });
+}
+
+async function listUsers(req, res) {
+  const { users, meta } = await adminService.listUsers(req.query);
+  sendSuccess(res, { message: 'Users', data: { users }, meta });
+}
+
+module.exports = { createStaff, listUsers };
