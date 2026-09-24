@@ -24,7 +24,7 @@ async function fillOpenSeats(workshopOrId, { session, now = new Date(), max = In
     const queueFilter = { workshop: ws._id, status: R.WAITLISTED };
     if (isCheckinWindowOpen(ws, now)) queueFilter.presentAt = { $ne: null };
 
-    const next = await Registration.findOne(queueFilter).sort({ createdAt: 1, _id: 1 }).session(session);
+    const next = await Registration.findOne(queueFilter).sort({ queueSeq: 1, createdAt: 1, _id: 1 }).session(session);
     if (!next) break;
 
     // Atomic seat claim - never exceeds capacity

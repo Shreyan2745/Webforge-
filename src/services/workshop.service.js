@@ -294,10 +294,10 @@ async function listParticipants(id, query) {
   }
 
   const [items, total, countsAgg, waitlist] = await Promise.all([
-    Registration.find(filter).sort({ createdAt: 1, _id: 1 }).skip(skip).limit(limit).populate('user', 'name email'),
+    Registration.find(filter).sort({ queueSeq: 1, createdAt: 1, _id: 1 }).skip(skip).limit(limit).populate('user', 'name email'),
     Registration.countDocuments(filter),
     Registration.aggregate([{ $match: { workshop: ws._id } }, { $group: { _id: '$status', n: { $sum: 1 } } }]),
-    Registration.find({ workshop: ws._id, status: R.WAITLISTED }).sort({ createdAt: 1, _id: 1 }).select('_id').lean(),
+    Registration.find({ workshop: ws._id, status: R.WAITLISTED }).sort({ queueSeq: 1, createdAt: 1, _id: 1 }).select('_id').lean(),
   ]);
 
   const positions = new Map(waitlist.map((r, i) => [String(r._id), i + 1]));

@@ -21,6 +21,9 @@ const workshopSchema = new mongoose.Schema(
     },
     // CONFIRMED + ATTENDED registrations. Only ever changed with atomic updates.
     seatsTaken: { type: Number, default: 0, min: 0 },
+    // Queue ticket counter. Every registration takes the next number atomically, which also
+    // serializes concurrent registrations for the same workshop (consistent waitlist positions).
+    queueSeq: { type: Number, default: 0 },
     status: { type: String, enum: Object.values(WORKSHOP_STATUS), default: WORKSHOP_STATUS.DRAFT },
     spotRegistrars: [{ type: ObjectId, ref: 'User' }],
     noShowGraceMinutes: { type: Number, min: 0, max: 120, default: () => config.rules.defaultNoShowGraceMinutes },
@@ -44,6 +47,7 @@ const workshopSchema = new mongoose.Schema(
         delete ret.__v;
         delete ret.reminder24hSentAt;
         delete ret.reminder1hSentAt;
+        delete ret.queueSeq;
         return ret;
       },
     },

@@ -22,6 +22,7 @@ const registrationSchema = new mongoose.Schema(
     status: { type: String, enum: Object.values(REGISTRATION_STATUS), required: true },
     // false only when CANCELLED - drives the "one active registration per workshop" unique index
     isActive: { type: Boolean, default: true },
+    queueSeq: { type: Number, default: null }, // ticket number from Workshop.queueSeq - waitlist order
     presentAt: Date, // waitlisted person confirmed at the venue on event day
     checkedInAt: Date,
     cancelledAt: Date,
@@ -29,12 +30,13 @@ const registrationSchema = new mongoose.Schema(
     statusHistory: { type: [historyEntrySchema], default: [] },
   },
   {
-    timestamps: true, // createdAt = waitlist queue order
+    timestamps: true,
     toJSON: {
       virtuals: true,
       transform(doc, ret) {
         delete ret._id;
         delete ret.__v;
+        delete ret.queueSeq;
         return ret;
       },
     },
@@ -50,7 +52,7 @@ registrationSchema.index(
   { user: 1, workshop: 1 },
   { unique: true, partialFilterExpression: { isActive: true }, name: 'one_active_registration' }
 );
-registrationSchema.index({ workshop: 1, status: 1, createdAt: 1 }); // waitlist queue + rosters
+registrationSchema.index({ workshop: 1, status: 1, queueSeq: 1, createdAt: 1 }); // waitlist queue + rosters
 registrationSchema.index({ user: 1, createdAt: -1 }); // "my registrations"
 
 module.exports = mongoose.model('Registration', registrationSchema);

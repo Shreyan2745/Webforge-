@@ -26,13 +26,20 @@ function emitRegEvent(event, reg, ctx, data = {}) {
   });
 }
 
-// 1-based position in the workshop's waitlist (derived from createdAt, never stored)
+// Queue order: ticket number first, then createdAt/_id as tie-breakers (for rows without a ticket)
+const QUEUE_SORT = { queueSeq: 1, createdAt: 1, _id: 1 };
+
+// 1-based position in the workshop's waitlist (derived, never stored)
 async function waitlistPosition(reg, session) {
   if (reg.status !== R.WAITLISTED) return null;
+  const aheadFilter =
+    reg.queueSeq != null
+      ? { $or: [{ queueSeq: { $lt: reg.queueSeq } }, { queueSeq: null }] }
+      : { queueSeq: null, $or: [{ createdAt: { $lt: reg.createdAt } }, { createdAt: reg.createdAt, _id: { $lt: reg._id } }] };
   const ahead = await Registration.countDocuments({
     workshop: reg.workshop?._id || reg.workshop,
     status: R.WAITLISTED,
-    $or: [{ createdAt: { $lt: reg.createdAt } }, { createdAt: reg.createdAt, _id: { $lt: reg._id } }],
+    ...aheadFilter,
   }).session(session || null);
   return ahead + 1;
 }
@@ -86,20 +93,24 @@ async function registerForWorkshop(workshopId, ctx) {
         throw ApiError.conflict(CODES.ALREADY_REGISTERED, `You already have a ${existing.status} registration for this workshop`);
       }
 
-      // Atomic seat claim: only succeeds while seatsTaken < capacity
-      const claimed = await Workshop.findOneAndUpdate(
+      // Atomic seat claim (only while seatsTaken < capacity) + queue ticket in the same write
+      let updated = await Workshop.findOneAndUpdate(
         { _id: ws._id, status: W.PUBLISHED, startAt: { $gt: now }, $expr: { $lt: ['$seatsTaken', '$capacity'] } },
-        { $inc: { seatsTaken: 1 } },
+        { $inc: { seatsTaken: 1, queueSeq: 1 } },
         { new: true, session }
       );
+      const status = updated ? R.CONFIRMED : R.WAITLISTED;
+      if (!updated) {
+        // Full -> just take a ticket. Writing the workshop doc makes concurrent registrations queue up.
+        updated = await Workshop.findOneAndUpdate({ _id: ws._id }, { $inc: { queueSeq: 1 } }, { new: true, session });
+      }
 
-      const status = claimed ? R.CONFIRMED : R.WAITLISTED;
       const [reg] = await Registration.create(
-        [{ user: userId, workshop: ws._id, status, statusHistory: [historyEntry(status, ctx.actor)] }],
+        [{ user: userId, workshop: ws._id, status, queueSeq: updated.queueSeq, statusHistory: [historyEntry(status, ctx.actor)] }],
         { session }
       );
       const position = await waitlistPosition(reg, session);
-      return { reg, ws: claimed || ws, position };
+      return { reg, ws: updated, position };
     });
   } catch (err) {
     // Two identical requests raced past the check - the partial unique index stops the 2nd
@@ -314,4 +325,5 @@ module.exports = {
   waitlistPosition,
   canUserCancel,
   toView,
+  QUEUE_SORT,
 };
