@@ -9,7 +9,8 @@
     "seed": "node scripts/seed.js",
     "smoke:auth": "node scripts/smoke/auth.smoke.js",
     "smoke:workshops": "node scripts/smoke/workshops.smoke.js",
-    "smoke:registrations": "node scripts/smoke/registrations.smoke.js"
+    "smoke:registrations": "node scripts/smoke/registrations.smoke.js",
+    "smoke:spot": "node scripts/smoke/spot.smoke.js"
   },
   "engines": {
     "node": ">=18"
